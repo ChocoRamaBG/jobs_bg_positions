@@ -3,11 +3,15 @@ name: Jobs.bg Daily Scraper
 on:
   schedule:
     - cron: '0 * * * *' # Пуска се на всеки час
-  workflow_dispatch: # Позволява ти да го пуснеш ръчно
+  workflow_dispatch: # Позволява ти да го пуснеш ръчно, Льольо!
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    # Даваме права на скрипта да пише обратно в репото
+    permissions:
+      contents: write
+      
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -19,7 +23,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install undetected-chromedriver beautifulsoup4
+          pip install undetected-chromedriver beautifulsoup4 selenium
 
       - name: Run Scraper
         run: python scraper.py
@@ -28,6 +32,13 @@ jobs:
         run: |
           git config --global user.name "GitHub Action Bot"
           git config --global user.email "actions@github.com"
-          git add master_jobs.csv last_id.txt
-          git commit -m "Dynamic update: $(date)" || exit 0
+          
+          # Проверяваме дали файловете съществуват, преди да ги добавим
+          [ -f master_jobs.csv ] && git add master_jobs.csv
+          [ -f last_id.txt ] && git add last_id.txt
+          
+          # Коммитваме само ако има промени, иначе излизаме мирно
+          git diff --quiet && git diff --staged --quiet || git commit -m "Dynamic update: $(date)"
+          
+          # Натискаме към облака
           git push
