@@ -1,4 +1,4 @@
- import os
+import os
 import time
 import json
 import csv
@@ -7,15 +7,18 @@ from datetime import datetime
 import undetected_chromedriver as uc
 from bs4 import BeautifulSoup
 
-# Пътят вътре в GitHub репото
+# Пътят вътре в GitHub репото (релативен за облака)
 MASTER_CSV = "master_jobs.csv"
 PROGRESS_FILE = "last_id.txt"
 
 def get_last_id():
     if os.path.exists(PROGRESS_FILE):
         with open(PROGRESS_FILE, 'r') as f:
-            return int(f.read().strip())
-    return 13976 # Начална точка по подразбиране
+            try:
+                return int(f.read().strip())
+            except:
+                return 13976
+    return 13976 
 
 def save_progress(current_id):
     with open(PROGRESS_FILE, 'w') as f:
@@ -23,6 +26,7 @@ def save_progress(current_id):
 
 def save_entry(row):
     file_exists = os.path.isfile(MASTER_CSV)
+    # Използваме utf-8-sig, за да не стане кирилицата на hell в CSV-то
     with open(MASTER_CSV, 'a', newline='', encoding='utf-8-sig') as f:
         writer = csv.writer(f)
         if not file_exists:
@@ -36,20 +40,22 @@ def run_the_gauntlet():
     options.add_argument("--headless") # GitHub Actions ВИНАГИ е headless
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
-    
-    driver = uc.Chrome(options=options)
-    start_id = get_last_id()
+    options.add_argument("--window-size=1920,1080")
     
     try:
-        # Променяме лимита на малки порции, защото GitHub Actions има лимит от 6 часа на рън
-        # Ще минаваме по 100 фирми наведнъж
-        for i in range(start_id, start_id + 100):
+        driver = uc.Chrome(options=options)
+        start_id = get_last_id()
+        
+        # Минаваме по 50 фирми наведнъж, за да не ни изпържи WAF-а
+        end_id = start_id + 50 
+        
+        for i in range(start_id, end_id):
             if i >= 100000: break
             
             company_id = f"{i:05}"
             target_url = f"https://www.jobs.bg/company/{company_id}/jobs"
             
-            print(f"[{datetime.now().strftime('%H:%M:%S')}] ID: {company_id}")
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] ID: {company_id} | Progress: {i}/{end_id}")
             
             driver.get(target_url)
             time.sleep(5) # Твоите златни 5 секунди
@@ -79,15 +85,18 @@ def run_the_gauntlet():
                             save_entry([date_posted, position, city, target_url, parsing_timestamp, company_name])
                         except:
                             continue
-                    print(f"  [+] Saved jobs for {company_name}")
+                    print(f"  [+] Saved positions for {company_name}")
                 
                 save_progress(i)
             except Exception as e:
                 print(f"Error at ID {company_id}: {e}")
                 continue
 
+    except Exception as global_e:
+        print(f"CRITICAL SYSTEM FAILURE: {global_e}")
     finally:
-        driver.quit()
+        if 'driver' in locals():
+            driver.quit()
 
 if __name__ == "__main__":
     run_the_gauntlet()
