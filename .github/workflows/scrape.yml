@@ -3,7 +3,7 @@ name: Jobs.bg Daily Scraper
 on:
   schedule:
     - cron: '0 * * * *' # Пуска се на всеки кръгъл час, Льольо!
-  workflow_dispatch: # Позволява ти да го пуснеш ръчно, когато имаш нисък Rizz
+  workflow_dispatch: # Позволява ти да го пуснеш ръчно
 
 jobs:
   build:
@@ -16,19 +16,20 @@ jobs:
       - name: 📥 Checkout code
         uses: actions/checkout@v3
         with:
-          # Взимаме цялата история, за да не се прецакат коммитчовци
           fetch-depth: 0
 
       - name: 🐍 Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
-          # БЕЛЕЖКА: Махнах кеша, защото нямаш requirements.txt и ще гърми като Гащник!
+          # THE RETURN OF THE KING: Кеширането е включено!
+          cache: 'pip'
 
       - name: 📦 Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install undetected-chromedriver beautifulsoup4 selenium
+          # Вече инсталираме директно от файла, никакви скандалчовци!
+          pip install -r requirements.txt
 
       - name: 🕵️ Run Scraper
         run: python scraper.py
@@ -47,7 +48,7 @@ jobs:
           if git diff --staged --quiet; then
             echo "No new job offers found. Aura is stable."
           else
-            # 3. КОММИТВАМЕ ПЪРВО! (Това спасява от rebase hell)
+            # 3. КОММИТВАМЕ ПЪРВО!
             git commit -m "Dynamic update: $(date +'%Y-%m-%d %H:%M:%S')"
             
             # 4. ЧАК СЛЕД ТОВА дърпаме от облака
