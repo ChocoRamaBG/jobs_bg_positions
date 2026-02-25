@@ -39,12 +39,11 @@ jobs:
           git config --global user.name "GitHub Action Bot"
           git config --global user.email "actions@github.com"
           
-          # 1. Добавяме тези файлчовци само ако съществуват
-          [ -f master_jobs.csv ] && git add master_jobs.csv
-          [ -f last_index.txt ] && git add last_index.txt
-          [ -f last_id.txt ] && git add last_id.txt
+          # 1. Добавяме тези файлчовци от новата им бърлога (папка script)
+          [ -f script/master_jobs.csv ] && git add script/master_jobs.csv
+          [ -f script/last_index.txt ] && git add script/last_index.txt
           
-          # 2. Проверяваме дали изобщо имаме нови редчовци
+          # 2. Проверяваме дали изобщо имаме нови редчовци в индекса
           if git diff --staged --quiet; then
             echo "No new job offers found. Aura is stable."
           else
