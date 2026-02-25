@@ -8,7 +8,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    # Даваме на тези ботчовци права да пипат файловете ти
+    # Даваме на тези ботчовци права да пипат файлчовци ти
     permissions:
       contents: write
       
@@ -23,8 +23,7 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
-          # Оптимизация: кешираме библиотеките, за да не сме льольовци
-          cache: 'pip'
+          # БЕЛЕЖКА: Махнах кеша, защото нямаш requirements.txt и ще гърми като Гащник!
 
       - name: 📦 Install dependencies
         run: |
@@ -39,18 +38,21 @@ jobs:
           git config --global user.name "GitHub Action Bot"
           git config --global user.email "actions@github.com"
           
-          # Добавяме тези файлчовци само ако съществуват
+          # 1. Добавяме тези файлчовци само ако съществуват
           [ -f master_jobs.csv ] && git add master_jobs.csv
           [ -f last_index.txt ] && git add last_index.txt
           [ -f last_id.txt ] && git add last_id.txt
           
-          # Правим Pull --rebase, за да избегнем merge скандалчовци
-          git pull --rebase origin main
-          
-          # Коммитваме само ако има промени в тези редчовци
+          # 2. Проверяваме дали изобщо имаме нови редчовци
           if git diff --staged --quiet; then
             echo "No new job offers found. Aura is stable."
           else
+            # 3. КОММИТВАМЕ ПЪРВО! (Това спасява от rebase hell)
             git commit -m "Dynamic update: $(date +'%Y-%m-%d %H:%M:%S')"
+            
+            # 4. ЧАК СЛЕД ТОВА дърпаме от облака
+            git pull --rebase origin main
+            
+            # 5. Изстрелваме всичко към твоето репо
             git push origin main
           fi
