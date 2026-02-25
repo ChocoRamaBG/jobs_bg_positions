@@ -6,10 +6,14 @@ from datetime import datetime
 import undetected_chromedriver as uc
 from bs4 import BeautifulSoup
 
-# Файлове в репото
+# The Holy Output Folder
+OUTPUT_DIR = "script"
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+# Входният файл си стои в root-а, но изходните логчовци и записчовци отиват в script/
 LINKS_FILE = "links.txt"
-PROGRESS_FILE = "last_index.txt"
-MASTER_CSV = "master_jobs.csv"
+PROGRESS_FILE = os.path.join(OUTPUT_DIR, "last_index.txt")
+MASTER_CSV = os.path.join(OUTPUT_DIR, "master_jobs.csv")
 
 def get_last_index():
     if os.path.exists(PROGRESS_FILE):
@@ -32,13 +36,13 @@ def save_entry(row):
 
 def run_the_gauntlet():
     if not os.path.exists(LINKS_FILE):
-        print("What the fuck, шефе! Къде е links.txt?")
+        print("What the fuck, шефе! Къде е links.txt? This is a complete андибул морков.")
         return
 
     with open(LINKS_FILE, 'r') as f:
         urls = [line.strip() for line in f if line.strip()]
 
-    print(f"--- STARTING LIST-STALKER PROTOCOL ({len(urls)} links) ---")
+    print(f"--- STARTING LOW-KEY STALKER PROTOCOL ({len(urls)} линкочовци) ---")
     
     options = uc.ChromeOptions()
     options.add_argument("--headless")
@@ -47,11 +51,10 @@ def run_the_gauntlet():
     options.add_argument("--window-size=1920,1080")
     
     try:
-        # Ползваме версия 144 за GitHub Runners
+        # Използваме v144 за GitHub
         driver = uc.Chrome(options=options, version_main=144)
         
         start_idx = get_last_index()
-        # Взимаме следващите 20 линка на всяко пускане, за да не ни резнат
         work_batch = urls[start_idx : start_idx + 20]
 
         for i, target_url in enumerate(work_batch):
@@ -60,20 +63,27 @@ def run_the_gauntlet():
             
             driver.get(target_url)
             
-            # Логика за изчакване
             if i == 0:
-                print("First link of the batch: Waiting 10s for stability...")
+                print("First link of the batch: Waiting 10s for Skibidi-DOM stability...")
                 time.sleep(10)
             else:
                 print("Wait 5s...")
                 time.sleep(5)
             
+            page_src = driver.page_source
+            
+            # THE FIX: Проверяваме дали не са ни хванали като Гащник, ПРЕДИ да парсваме!
+            if "Проверка за това, че не сте робот" in page_src or "Cloudflare" in page_src:
+                print("Hell, we got busted! The IP is blocked.")
+                print("Спираме тези скриптчовци, за да не маркираме линка като 'успешен'!")
+                break # Прекратяваме луупа тук, за да НЕ записваме фалшив прогрес.
+            
             try:
-                soup = BeautifulSoup(driver.page_source, 'html.parser')
+                soup = BeautifulSoup(page_src, 'html.parser')
                 company_tag = soup.find('h2', class_='center-content')
                 
                 if not company_tag:
-                    print(f"  [-] No company found at {target_url}. Skipping.")
+                    print(f"  [-] No company found at {target_url}. Skipping this dead rizz.")
                     save_progress(current_total_idx + 1)
                     continue
                 
@@ -90,19 +100,23 @@ def run_the_gauntlet():
                             city = card.find('div', class_='card-info card__subtitle').get_text(separator=' ', strip=True).split(';')[0].strip()
                             
                             save_entry([date, pos, city, target_url, now, company_name])
-                        except: continue
+                        except Exception as e:
+                            # THE FIX: Никога не оставяй гол except, за да не плачеш после!
+                            print(f"  [!] Card parsing error (Brainrot structure): {e}")
+                            continue
+                            
                     print(f"  [+] Saved {len(job_cards)} jobs for {company_name}")
                 
-                # Записваме прогреса след всяка успешна фирма
+                # Чак като сме минали успешно, сейфваме индекса
                 save_progress(current_total_idx + 1)
                 
             except Exception as e:
                 print(f"Error parsing {target_url}: {e}")
                 continue
 
-        # Ако сме стигнали края на списъка, рестартираме за следващия цикъл (по желание)
+        # Ресетваме прогреса, ако стигнем края
         if start_idx + 20 >= len(urls):
-            print("Reached end of links.txt. Resetting index to 0.")
+            print("Reached end of links.txt. Resetting index to 0. It's time to sleep.")
             save_progress(0)
 
     except Exception as e:
