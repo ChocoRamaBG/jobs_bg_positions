@@ -8,7 +8,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    # Даваме на тези ботчовци права да пипат файлчовци ти
     permissions:
       contents: write
       
@@ -22,37 +21,38 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
-          # THE RETURN OF THE KING: Кеширането е включено!
           cache: 'pip'
 
       - name: 📦 Install dependencies
         run: |
           python -m pip install --upgrade pip
-          # Вече инсталираме директно от файла, никакви скандалчовци!
           pip install -r requirements.txt
 
       - name: 🕵️ Run Scraper
         run: python scraper.py
+
+      # --- ТОВА Е НОВИЯТ МОМЕНТ, ШЕФЕ! ---
+      - name: 🚀 Upload Debug Dumps
+        if: always() # Да работи дори ако скриптът се издъни
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-web-pages
+          path: page_dumps/ # Пътят до папката със снимките
+          retention-days: 1 # Пази ги само 1 ден, да не пълним репото с боклук
+      # ----------------------------------
 
       - name: 💾 Sync Data and Push
         run: |
           git config --global user.name "GitHub Action Bot"
           git config --global user.email "actions@github.com"
           
-          # 1. Добавяме тези файлчовци от новата им бърлога (папка script)
           [ -f script/master_jobs.csv ] && git add script/master_jobs.csv
           [ -f script/last_index.txt ] && git add script/last_index.txt
           
-          # 2. Проверяваме дали изобщо имаме нови редчовци в индекса
           if git diff --staged --quiet; then
             echo "No new job offers found. Aura is stable."
           else
-            # 3. КОММИТВАМЕ ПЪРВО!
             git commit -m "Dynamic update: $(date +'%Y-%m-%d %H:%M:%S')"
-            
-            # 4. ЧАК СЛЕД ТОВА дърпаме от облака
             git pull --rebase origin main
-            
-            # 5. Изстрелваме всичко към твоето репо
             git push origin main
           fi
