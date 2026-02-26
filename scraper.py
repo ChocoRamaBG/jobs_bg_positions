@@ -7,13 +7,11 @@ import undetected_chromedriver as uc
 from bs4 import BeautifulSoup
 
 # --- THE CLOUD PATHS ---
-# Изходните файлчовци отиват в script/
 try:
     output_dir = os.path.dirname(os.path.abspath(__file__))
 except NameError:
     output_dir = os.getcwd()
 
-# Слагаме логовете в подпапка, за да не стане мазало
 LOG_DIR = os.path.join(output_dir, "page_dumps")
 os.makedirs(LOG_DIR, exist_ok=True)
 
@@ -42,7 +40,7 @@ def save_entry(row):
 
 def run_the_gauntlet():
     if not os.path.exists(LINKS_FILE):
-        print("What the fuck, шефе! Няма links.txt в репото. Пълен andibul carrot!")
+        print("What the fuck, шефе! Няма links.txt. Пълен andibul carrot!")
         return
 
     with open(LINKS_FILE, 'r') as f:
@@ -56,9 +54,17 @@ def run_the_gauntlet():
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--window-size=1920,1080")
     
+    # ТУК Е МАГИЯТА: Слагаме истински User-Agent, за да не изглеждаме като гащник
+    options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36')
+    
     try:
         driver = uc.Chrome(options=options, version_main=144)
         
+        # Скриваме факта, че сме автоматизирани
+        driver.execute_cdp_cmd('Network.setUserAgentOverride', {
+            "userAgent": 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+        })
+
         start_idx = get_last_index()
         work_batch = urls[start_idx : start_idx + 20]
 
@@ -68,31 +74,35 @@ def run_the_gauntlet():
             
             driver.get(target_url)
             
-            # Малко почивка, че тоя Cloudflare е злобен като свекърва
-            wait_time = 10 if i == 0 else 5
+            # Първия път чакаме здраво (25 сек), за да мине Cloudflare проверката
+            wait_time = 25 if i == 0 else 7
             time.sleep(wait_time)
             
             page_src = driver.page_source
             
-            # --- DEBUG DUMP ---
-            # Запазваме страницата, за да видиш какъв скандалчовци стават вътре
+            # Snapshots за дебъгване
             timestamp = datetime.now().strftime("%H%M%S")
             filename = f"page_{current_total_idx}_{timestamp}.html"
             with open(os.path.join(LOG_DIR, filename), "w", encoding="utf-8") as f:
                 f.write(page_src)
-            print(f"  [!] Snapshot saved: {filename}")
-            # ------------------
             
             if "Проверка за това, че не сте робот" in page_src or "Cloudflare" in page_src:
-                print("Hell, we got busted! GitHub IP-то е блокирано. Малини, къпини, все тая - спираме.")
-                break 
+                print(f"Hell, we got busted! Провери {filename}. Малини, къпини, все тая.")
+                # Правим последен опит с още малко чакане, ако е първият линк
+                if i == 0:
+                    print("Опитваме още 15 секунди търпение...")
+                    time.sleep(15)
+                    page_src = driver.page_source
+                    if "Cloudflare" in page_src: break
+                else:
+                    break 
             
             try:
                 soup = BeautifulSoup(page_src, 'html.parser')
                 company_tag = soup.find('h2', class_='center-content')
                 
                 if not company_tag:
-                    print(f"  [-] No company found. Dead rizz. Провери файлчовци в {LOG_DIR}")
+                    print(f"  [-] No company found. Dead rizz. Виж {filename}")
                     save_progress(current_total_idx + 1)
                     continue
                 
@@ -111,7 +121,6 @@ def run_the_gauntlet():
                             save_entry([date, pos, city, target_url, now, company_name])
                         except Exception:
                             continue
-                            
                     print(f"  [+] Saved {len(job_cards)} jobs for {company_name}")
                 
                 save_progress(current_total_idx + 1)
@@ -121,7 +130,7 @@ def run_the_gauntlet():
                 continue
 
         if start_idx + 20 >= len(urls):
-            print("Reached end of links.txt. Resetting index to 0.")
+            print("End of list. Resetting index.")
             save_progress(0)
 
     except Exception as e:
