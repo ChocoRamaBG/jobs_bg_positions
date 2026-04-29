@@ -92,7 +92,8 @@ def run_the_gauntlet():
             driver.save_screenshot(os.path.join(LOG_DIR, screenshot_filename))
             print(f"  [📸] Щракнах снимчица: {screenshot_filename}")
             
-            if "Проверка за това, че не сте робот" in page_src or "Cloudflare" in page_src:
+            # Добавен е новият текст за блокиран достъп от картинката ти!
+            if "Проверка за това, че не сте робот" in page_src or "Cloudflare" in page_src or "Достъпът е временно ограничен" in page_src:
                 print(f"Hell, we got busted! Провери {html_filename} и картинката. Малини, къпини, все тая.")
                 # Правим последен опит с още малко чакане, ако е първият линк
                 if i == 0:
@@ -103,7 +104,7 @@ def run_the_gauntlet():
                     # Щракаме пак, ако сме чакали втори път, да видим каква е хавата
                     driver.save_screenshot(os.path.join(LOG_DIR, f"screenshot_retry_{current_total_idx}_{timestamp}.png"))
                     
-                    if "Cloudflare" in page_src: break
+                    if "Cloudflare" in page_src or "Достъпът е временно ограничен" in page_src: break
                 else:
                     break 
             
