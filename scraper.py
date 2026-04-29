@@ -59,7 +59,7 @@ def run_the_gauntlet():
     
     try:
         # БАТКО ЧАТКО ГО ПОПРАВИ: Махнат е version_main=144, за да хване текущата версия автоматично!
-        driver = uc.Chrome(options=options)
+        driver = uc.Chrome(options=options, version_main=147)
         
         # Скриваме факта, че сме автоматизирани
         driver.execute_cdp_cmd('Network.setUserAgentOverride', {
