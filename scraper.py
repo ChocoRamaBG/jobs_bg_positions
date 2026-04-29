@@ -58,7 +58,7 @@ def run_the_gauntlet():
     options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36')
     
     try:
-        # БАТКО ЧАТКО ГО ПОПРАВИ: Махнат е version_main=144, за да хване текущата версия автоматично!
+        # Батко чатко ти остави 147, за да не гърмят пак тъпите еррорчовци!
         driver = uc.Chrome(options=options, version_main=147)
         
         # Скриваме факта, че сме автоматизирани
@@ -73,25 +73,36 @@ def run_the_gauntlet():
             current_total_idx = start_idx + i
             print(f"[{datetime.now().strftime('%H:%M:%S')}] Processing: {target_url}")
             
+            driver.get(target_url)
+            
             # Първия път чакаме здраво (25 сек), за да мине Cloudflare проверката
             wait_time = 25 if i == 0 else 7
             time.sleep(wait_time)
             
             page_src = driver.page_source
-            
-            # Snapshots за дебъгване
             timestamp = datetime.now().strftime("%H%M%S")
-            filename = f"page_{current_total_idx}_{timestamp}.html"
-            with open(os.path.join(LOG_DIR, filename), "w", encoding="utf-8") as f:
+            
+            # Snapshots за дебъгване - HTML файлчето
+            html_filename = f"page_{current_total_idx}_{timestamp}.html"
+            with open(os.path.join(LOG_DIR, html_filename), "w", encoding="utf-8") as f:
                 f.write(page_src)
+                
+            # БАТКО ЧАТКО МАГИЯТА: Ето ги твоите скрийншотчовци за бавноразвиващи се!
+            screenshot_filename = f"screenshot_{current_total_idx}_{timestamp}.png"
+            driver.save_screenshot(os.path.join(LOG_DIR, screenshot_filename))
+            print(f"  [📸] Щракнах снимчица: {screenshot_filename}")
             
             if "Проверка за това, че не сте робот" in page_src or "Cloudflare" in page_src:
-                print(f"Hell, we got busted! Провери {filename}. Малини, къпини, все тая.")
+                print(f"Hell, we got busted! Провери {html_filename} и картинката. Малини, къпини, все тая.")
                 # Правим последен опит с още малко чакане, ако е първият линк
                 if i == 0:
                     print("Опитваме още 15 секунди търпение...")
                     time.sleep(15)
                     page_src = driver.page_source
+                    
+                    # Щракаме пак, ако сме чакали втори път, да видим каква е хавата
+                    driver.save_screenshot(os.path.join(LOG_DIR, f"screenshot_retry_{current_total_idx}_{timestamp}.png"))
+                    
                     if "Cloudflare" in page_src: break
                 else:
                     break 
@@ -101,7 +112,7 @@ def run_the_gauntlet():
                 company_tag = soup.find('h2', class_='center-content')
                 
                 if not company_tag:
-                    print(f"  [-] No company found. Dead rizz. Виж {filename}")
+                    print(f"  [-] No company found. Dead rizz. Виж {html_filename}")
                     save_progress(current_total_idx + 1)
                     continue
                 
