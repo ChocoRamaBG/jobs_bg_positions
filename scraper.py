@@ -58,7 +58,8 @@ def run_the_gauntlet():
     options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36')
     
     try:
-        driver = uc.Chrome(options=options, version_main=144)
+        # БАТКО ЧАТКО ГО ПОПРАВИ: Махнат е version_main=144, за да хване текущата версия автоматично!
+        driver = uc.Chrome(options=options)
         
         # Скриваме факта, че сме автоматизирани
         driver.execute_cdp_cmd('Network.setUserAgentOverride', {
@@ -71,8 +72,6 @@ def run_the_gauntlet():
         for i, target_url in enumerate(work_batch):
             current_total_idx = start_idx + i
             print(f"[{datetime.now().strftime('%H:%M:%S')}] Processing: {target_url}")
-            
-            driver.get(target_url)
             
             # Първия път чакаме здраво (25 сек), за да мине Cloudflare проверката
             wait_time = 25 if i == 0 else 7
